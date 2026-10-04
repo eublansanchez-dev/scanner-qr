@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>Escanear ficha WiFi</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #1E90FF;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+    color: #111;
+}
+
+.contenedor {
+    max-width: 420px;
+    margin: auto;
+    background: white;
+    border-radius: 15px;
+    padding: 25px 20px;
+    box-shadow: 0 5px 20px rgba(0,0,0,.25);
+}
+
+h1 {
+    margin-top: 5px;
+    font-size: 25px;
+}
+
+.descripcion {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+#video {
+    width: 100%;
+    max-width: 360px;
+    border-radius: 12px;
+    margin-top: 15px;
+    background: #000;
+}
+
+#canvas {
+    display: none;
+}
+
+.estado {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #eeeeee;
+    font-size: 15px;
+}
+
+.boton {
+    display: block;
+    width: 100%;
+    padding: 13px;
+    margin-top: 15px;
+    border: 0;
+    border-radius: 7px;
+    background: #25a244;
+    color: white;
+    font-size: 17px;
+    font-weight: bold;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="contenedor">
+
+<h1>📷 Escanear ficha</h1>
+
+<p class="descripcion">
+Apunta la cámara al código QR de tu ficha.
+</p>
+
+
+<video
+    id="video"
+    autoplay
+    playsinline
+>
+</video>
+
+
+<canvas id="canvas"></canvas>
+
+
+<div
+    id="estado"
+    class="estado"
+>
+Iniciando cámara...
+</div>
+
+
+<button
+    id="reiniciar"
+    class="boton"
+    style="display:none;"
+>
+    🔄 INTENTAR NUEVAMENTE
+</button>
+
+
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+
+<script>
+
+const video =
+    document.getElementById("video");
+
+const canvas =
+    document.getElementById("canvas");
+
+const contexto =
+    canvas.getContext("2d");
+
+const estado =
+    document.getElementById("estado");
+
+const reiniciar =
+    document.getElementById("reiniciar");
+
+
+let stream = null;
+
+let escaneando = false;
+
+
+
+/* =====================================
+   INICIAR CAMARA
+   ===================================== */
+
+async function iniciarCamara() {
+
+    try {
+
+        estado.innerHTML =
+            "Solicitando acceso a la cámara...";
+
+        stream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video: {
+                    facingMode: {
+                        ideal: "environment"
+                    }
+                },
+
+                audio: false
+
+            });
+
+
+        video.srcObject =
+            stream;
+
+
+        escaneando = true;
+
+
+        estado.innerHTML =
+            "📷 Apunta al código QR de tu ficha.";
+
+
+        analizarQR();
+
+
+    } catch (error) {
+
+        console.log(error);
+
+
+        estado.innerHTML =
+            "No se pudo abrir la cámara. Revisa el permiso de cámara del navegador.";
+
+
+        reiniciar.style.display =
+            "block";
+
+    }
+
+}
+
+
+
+/* =====================================
+   ANALIZAR QR
+   ===================================== */
+
+function analizarQR() {
+
+    if (!escaneando) {
+        return;
+    }
+
+
+    if (
+        video.readyState ===
+        video.HAVE_ENOUGH_DATA
+    ) {
+
+        canvas.width =
+            video.videoWidth;
+
+        canvas.height =
+            video.videoHeight;
+
+
+        contexto.drawImage(
+            video,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+
+        const imagen =
+            contexto.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
+        const resultado =
+            jsQR(
+                imagen.data,
+                imagen.width,
+                imagen.height
+            );
+
+
+        if (resultado) {
+
+            const direccion =
+                resultado.data;
+
+
+            console.log(
+                "QR:",
+                direccion
+            );
+
+
+            /*
+             * Solo aceptamos QR que
+             * correspondan al HotSpot.
+             */
+
+            if (
+                direccion.indexOf(
+                    "http://192.168.88.1/login?"
+                ) === 0
+            ) {
+
+                escaneando =
+                    false;
+
+
+                detenerCamara();
+
+
+                estado.innerHTML =
+                    "✅ Ficha encontrada. Conectando...";
+
+
+                setTimeout(
+                    function() {
+
+                        window.location.href =
+                            direccion;
+
+                    },
+                    500
+                );
+
+
+                return;
+
+            } else {
+
+                estado.innerHTML =
+                    "⚠️ Este QR no corresponde a una ficha de esta red.";
+
+            }
+
+        }
+
+    }
+
+
+    requestAnimationFrame(
+        analizarQR
+    );
+
+}
+
+
+
+/* =====================================
+   DETENER CAMARA
+   ===================================== */
+
+function detenerCamara() {
+
+    escaneando =
+        false;
+
+
+    if (stream) {
+
+        stream
+            .getTracks()
+            .forEach(
+                function(track) {
+
+                    track.stop();
+
+                }
+            );
+
+    }
+
+}
+
+
+
+/* =====================================
+   REINICIAR
+   ===================================== */
+
+reiniciar.onclick =
+    function() {
+
+        reiniciar.style.display =
+            "none";
+
+        iniciarCamara();
+
+    };
+
+
+
+/* =====================================
+   INICIAR
+   ===================================== */
+
+window.addEventListener(
+    "load",
+    function() {
+
+        iniciarCamara();
+
+    }
+);
+
+</script>
+
+
+</body>
+
+</html>
