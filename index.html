@@ -1,16 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Escanear ficha WiFi</title>
 
 <style>
-
 * {
     box-sizing: border-box;
 }
@@ -61,7 +56,6 @@ h1 {
     border-radius: 8px;
     background: #eeeeee;
     font-size: 15px;
-    word-break: break-all;
 }
 
 .boton {
@@ -76,14 +70,10 @@ h1 {
     font-size: 17px;
     font-weight: bold;
 }
-
 </style>
-
 </head>
 
-
 <body>
-
 
 <div class="contenedor">
 
@@ -93,25 +83,13 @@ h1 {
 Apunta la cámara al código QR de tu ficha.
 </p>
 
-
-<video
-    id="video"
-    autoplay
-    playsinline
->
-</video>
-
+<video id="video" autoplay playsinline></video>
 
 <canvas id="canvas"></canvas>
 
-
-<div
-    id="estado"
-    class="estado"
->
+<div id="estado" class="estado">
 Iniciando cámara...
 </div>
-
 
 <button
     id="reiniciar"
@@ -121,48 +99,23 @@ Iniciando cámara...
 🔄 INTENTAR NUEVAMENTE
 </button>
 
-
 </div>
-
-
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-
 <script>
 
-
-const video =
-    document.getElementById("video");
-
-
-const canvas =
-    document.getElementById("canvas");
-
-
-const contexto =
-    canvas.getContext("2d");
-
-
-const estado =
-    document.getElementById("estado");
-
-
-const reiniciar =
-    document.getElementById("reiniciar");
-
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const contexto = canvas.getContext("2d");
+const estado = document.getElementById("estado");
+const reiniciar = document.getElementById("reiniciar");
 
 let stream = null;
-
 let escaneando = false;
 
-let ultimoQR = "";
 
-
-
-/* =====================================
-   INICIAR CAMARA
-   ===================================== */
+/* INICIAR CAMARA */
 
 async function iniciarCamara() {
 
@@ -171,58 +124,40 @@ async function iniciarCamara() {
         estado.innerHTML =
             "Solicitando acceso a la cámara...";
 
-
         stream =
             await navigator.mediaDevices.getUserMedia({
 
                 video: {
-
                     facingMode: {
                         ideal: "environment"
                     }
-
                 },
 
                 audio: false
-
             });
 
-
-        video.srcObject =
-            stream;
-
+        video.srcObject = stream;
 
         escaneando = true;
-
 
         estado.innerHTML =
             "📷 Apunta al código QR de tu ficha.";
 
-
         analizarQR();
-
 
     } catch (error) {
 
         console.log(error);
 
-
         estado.innerHTML =
-            "❌ No se pudo abrir la cámara. Revisa el permiso de cámara.";
+            "❌ No se pudo abrir la cámara.";
 
-
-        reiniciar.style.display =
-            "block";
-
+        reiniciar.style.display = "block";
     }
-
 }
 
 
-
-/* =====================================
-   ANALIZAR QR
-   ===================================== */
+/* LEER QR */
 
 function analizarQR() {
 
@@ -230,180 +165,159 @@ function analizarQR() {
         return;
     }
 
-
     if (
         video.readyState ===
         video.HAVE_ENOUGH_DATA
     ) {
 
-
-        canvas.width =
-            video.videoWidth;
-
-
-        canvas.height =
-            video.videoHeight;
-
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
         contexto.drawImage(
-
             video,
-
             0,
-
             0,
-
             canvas.width,
-
             canvas.height
-
         );
-
 
         const imagen =
             contexto.getImageData(
-
                 0,
-
                 0,
-
                 canvas.width,
-
                 canvas.height
-
             );
-
 
         const resultado =
             jsQR(
-
                 imagen.data,
-
                 imagen.width,
-
                 imagen.height
-
             );
-
 
         if (resultado) {
 
+            const qr = resultado.data.trim();
 
-            const direccion =
-                resultado.data;
+            console.log("QR:", qr);
 
+            escaneando = false;
 
-            console.log(
-                "QR LEÍDO:",
-                direccion
-            );
-
+            detenerCamara();
 
             /*
-             * Evita mostrar el mismo QR
-             * muchas veces.
+             * QR DE LA FICHA:
+             *
+             * jvc.net?userman=n74&password=vty
+             *
+             * Lo convertimos en:
+             *
+             * http://192.168.88.1/login?
+             * username=n74&password=vty
              */
 
+            let texto = qr;
+
             if (
-                direccion !== ultimoQR
+                !texto.startsWith("http://") &&
+                !texto.startsWith("https://")
             ) {
+                texto = "http://" + texto;
+            }
 
-                ultimoQR =
-                    direccion;
+            try {
+
+                const url = new URL(texto);
+
+                const usuario =
+                    url.searchParams.get("userman");
+
+                const password =
+                    url.searchParams.get("password");
 
 
-                escaneando =
-                    false;
+                if (
+                    usuario &&
+                    password
+                ) {
 
+                    const loginURL =
+                        "http://192.168.88.1/login?" +
+                        "username=" +
+                        encodeURIComponent(usuario) +
+                        "&password=" +
+                        encodeURIComponent(password);
 
-                detenerCamara();
+                    estado.innerHTML =
+                        "✅ Ficha encontrada.<br>" +
+                        "Conectando...";
+
+                    setTimeout(
+                        function() {
+
+                            window.location.href =
+                                loginURL;
+
+                        },
+                        700
+                    );
+
+                    return;
+                }
 
 
                 estado.innerHTML =
-                    "✅ QR ENCONTRADO";
-
-
-                /*
-                 * MOSTRAR EL CONTENIDO
-                 * REAL DEL QR
-                 */
-
-                alert(
-                    "QR LEÍDO:\n\n" +
-                    direccion
-                );
-
-
-                /*
-                 * También lo mostramos
-                 * en la pantalla.
-                 */
-
-                estado.innerHTML =
-                    "<strong>QR LEÍDO:</strong><br><br>" +
-                    direccion;
-
+                    "⚠️ El QR no contiene una ficha válida.";
 
                 reiniciar.style.display =
                     "block";
 
+            } catch (error) {
+
+                console.log(error);
+
+                estado.innerHTML =
+                    "⚠️ No se pudo leer la ficha.";
+
+                reiniciar.style.display =
+                    "block";
             }
-
         }
-
     }
-
 
     if (escaneando) {
 
         requestAnimationFrame(
             analizarQR
         );
-
     }
-
 }
 
 
-
-/* =====================================
-   DETENER CAMARA
-   ===================================== */
+/* DETENER CAMARA */
 
 function detenerCamara() {
 
-    escaneando =
-        false;
-
+    escaneando = false;
 
     if (stream) {
 
         stream
             .getTracks()
             .forEach(
-
                 function(track) {
-
                     track.stop();
-
                 }
-
             );
-
     }
-
 }
 
 
-
-/* =====================================
-   REINICIAR
-   ===================================== */
+/* REINICIAR */
 
 reiniciar.onclick =
     function() {
-
-        ultimoQR = "";
 
         reiniciar.style.display =
             "none";
@@ -412,30 +326,21 @@ reiniciar.onclick =
             "Iniciando cámara...";
 
         iniciarCamara();
-
     };
 
 
-
-/* =====================================
-   INICIAR AUTOMATICAMENTE
-   ===================================== */
+/* INICIAR */
 
 window.addEventListener(
-
     "load",
-
     function() {
 
         iniciarCamara();
 
     }
-
 );
 
 </script>
 
-
 </body>
-
 </html>
