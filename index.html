@@ -2,7 +2,6 @@
 <html lang="es">
 
 <head>
-
 <meta charset="UTF-8">
 
 <meta
@@ -83,9 +82,7 @@ h1 {
 
 </head>
 
-
 <body>
-
 
 <div class="contenedor">
 
@@ -95,7 +92,6 @@ h1 {
 Apunta la cámara al código QR de tu ficha.
 </p>
 
-
 <video
     id="video"
     autoplay
@@ -103,9 +99,7 @@ Apunta la cámara al código QR de tu ficha.
 >
 </video>
 
-
 <canvas id="canvas"></canvas>
-
 
 <div
     id="estado"
@@ -113,7 +107,6 @@ Apunta la cámara al código QR de tu ficha.
 >
 Iniciando cámara...
 </div>
-
 
 <button
     id="reiniciar"
@@ -123,9 +116,7 @@ Iniciando cámara...
     🔄 INTENTAR NUEVAMENTE
 </button>
 
-
 </div>
-
 
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -152,7 +143,6 @@ const reiniciar =
 let stream = null;
 
 let escaneando = false;
-
 
 
 /* =====================================
@@ -274,13 +264,17 @@ function analizarQR() {
 
 
             /*
-             * Solo aceptamos QR que
-             * correspondan al HotSpot.
+             * Aceptamos QR de las fichas
+             * del HotSpot 192.168.88.1
              */
 
             if (
                 direccion.indexOf(
                     "http://192.168.88.1/login?"
+                ) === 0 ||
+
+                direccion.indexOf(
+                    "https://192.168.88.1/login?"
                 ) === 0
             ) {
 
@@ -386,7 +380,6 @@ window.addEventListener(
 );
 
 </script>
-
 
 </body>
 
