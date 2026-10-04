@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
 
 <meta charset="UTF-8">
@@ -34,24 +33,14 @@ body {
 }
 
 h1 {
-    margin-top: 5px;
     font-size: 25px;
-}
-
-p {
-    font-size: 16px;
 }
 
 video {
     width: 100%;
     max-width: 360px;
-    margin-top: 15px;
     border-radius: 12px;
     background: black;
-}
-
-canvas {
-    display: none;
 }
 
 #resultado {
@@ -59,7 +48,6 @@ canvas {
     padding: 15px;
     background: #eeeeee;
     border-radius: 8px;
-    font-size: 15px;
     word-break: break-all;
 }
 
@@ -79,9 +67,7 @@ button {
 
 </head>
 
-
 <body>
-
 
 <div class="contenedor">
 
@@ -91,72 +77,60 @@ button {
 Apunta la cámara al código QR de tu ficha.
 </p>
 
-
-<video
-    id="video"
-    autoplay
-    playsinline>
+<video id="video"
+       autoplay
+       playsinline>
 </video>
 
-
-<canvas id="canvas"></canvas>
-
+<canvas id="canvas"
+        style="display:none;">
+</canvas>
 
 <div id="resultado">
-
-📷 Apunta la cámara al código QR...
-
+📷 Iniciando cámara...
 </div>
-
 
 <button onclick="location.reload()">
-
 🔄 INTENTAR NUEVAMENTE
-
 </button>
-
 
 </div>
 
-
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
 
 <script>
 
 const video =
-    document.getElementById("video");
+document.getElementById("video");
 
 const canvas =
-    document.getElementById("canvas");
+document.getElementById("canvas");
 
-const contexto =
-    canvas.getContext("2d");
+const ctx =
+canvas.getContext("2d");
 
 const resultado =
-    document.getElementById("resultado");
+document.getElementById("resultado");
 
 let escaneando = true;
 
 
 /* =========================
-   ABRIR CÁMARA
+   CÁMARA
    ========================= */
 
-navigator.mediaDevices.getUserMedia({
+navigator.mediaDevices
+.getUserMedia({
 
     video: {
-
         facingMode: {
             ideal: "environment"
         }
-
     },
 
     audio: false
 
 })
-
 .then(function(stream) {
 
     video.srcObject = stream;
@@ -164,20 +138,15 @@ navigator.mediaDevices.getUserMedia({
     video.play();
 
     resultado.innerHTML =
-        "📷 Cámara activa.<br>" +
-        "Apunta al código QR.";
+        "📷 Apunta al código QR de tu ficha.";
 
     leerQR();
 
 })
-
 .catch(function(error) {
 
-    console.log(error);
-
     resultado.innerHTML =
-        "❌ No se pudo abrir la cámara.<br><br>" +
-        error.message;
+        "❌ No se pudo abrir la cámara.";
 
 });
 
@@ -193,10 +162,8 @@ function leerQR() {
     }
 
 
-    if (
-        video.readyState ===
-        video.HAVE_ENOUGH_DATA
-    ) {
+    if (video.readyState ===
+        video.HAVE_ENOUGH_DATA) {
 
 
         canvas.width =
@@ -206,44 +173,29 @@ function leerQR() {
             video.videoHeight;
 
 
-        contexto.drawImage(
-
+        ctx.drawImage(
             video,
-
             0,
-
             0,
-
             canvas.width,
-
             canvas.height
-
         );
 
 
         const imagen =
-            contexto.getImageData(
-
+            ctx.getImageData(
                 0,
-
                 0,
-
                 canvas.width,
-
                 canvas.height
-
             );
 
 
         const codigo =
             jsQR(
-
                 imagen.data,
-
                 imagen.width,
-
                 imagen.height
-
             );
 
 
@@ -257,41 +209,19 @@ function leerQR() {
             if (video.srcObject) {
 
                 video.srcObject
-                    .getTracks()
-                    .forEach(
-                        function(track) {
+                .getTracks()
+                .forEach(function(track) {
 
-                            track.stop();
+                    track.stop();
 
-                        }
-                    );
+                });
 
             }
 
 
-            /* MOSTRAR CONTENIDO REAL DEL QR */
-
-            resultado.innerHTML =
-
-                "<b>✅ QR LEÍDO</b>" +
-
-                "<br><br>" +
-
-                "<b>Contenido del QR:</b>" +
-
-                "<br><br>" +
-
-                codigo.data;
-
-
-            console.log(
-                "CONTENIDO QR:",
-                codigo.data
-            );
-
+            procesarQR(codigo.data);
 
             return;
-
         }
 
     }
@@ -303,9 +233,127 @@ function leerQR() {
 
 }
 
+
+/* =========================
+   PROCESAR QR
+   ========================= */
+
+function procesarQR(texto) {
+
+    texto = texto.trim();
+
+
+    /*
+       EJEMPLO REAL DEL QR:
+
+       jvc.net?userman=XXXX&password=XXXX
+    */
+
+
+    let datos;
+
+
+    try {
+
+        /*
+           Agregamos http:// solamente
+           para que JavaScript pueda
+           interpretar correctamente
+           jvc.net?...
+        */
+
+        let urlTexto = texto;
+
+        if (
+            !urlTexto.startsWith("http://") &&
+            !urlTexto.startsWith("https://")
+        ) {
+
+            urlTexto =
+                "http://" + urlTexto;
+
+        }
+
+
+        const url =
+            new URL(urlTexto);
+
+
+        const usuario =
+            url.searchParams.get("userman");
+
+        const password =
+            url.searchParams.get("password");
+
+
+        console.log(
+            "Usuario:",
+            usuario
+        );
+
+        console.log(
+            "Password:",
+            password
+        );
+
+
+        if (!usuario || !password) {
+
+            resultado.innerHTML =
+                "❌ No se encontraron " +
+                "usuario y contraseña en el QR.";
+
+            return;
+
+        }
+
+
+        /*
+           AQUÍ CONSTRUIMOS EL LOGIN
+           REAL DEL MIKROTIK
+        */
+
+        const loginURL =
+            "http://192.168.88.1/login" +
+            "?username=" +
+            encodeURIComponent(usuario) +
+            "&password=" +
+            encodeURIComponent(password);
+
+
+        resultado.innerHTML =
+            "✅ Ficha encontrada.<br><br>" +
+            "Conectando a Internet...";
+
+
+        /*
+           ESPERAMOS UN MOMENTO Y
+           REDIRIGIMOS AL MIKROTIK
+        */
+
+        setTimeout(function() {
+
+            window.location.href =
+                loginURL;
+
+        }, 1000);
+
+
+    }
+
+    catch(error) {
+
+        console.log(error);
+
+        resultado.innerHTML =
+            "❌ No se pudo interpretar " +
+            "el código QR.";
+
+    }
+
+}
+
 </script>
 
-
 </body>
-
 </html>
