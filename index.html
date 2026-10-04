@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
 <title>Escanear ficha WiFi</title>
 
 <style>
+
 * {
     box-sizing: border-box;
 }
@@ -16,15 +22,14 @@ body {
     background: #1E90FF;
     font-family: Arial, Helvetica, sans-serif;
     text-align: center;
-    color: #111;
 }
 
 .contenedor {
     max-width: 420px;
     margin: auto;
     background: white;
-    border-radius: 15px;
     padding: 25px 20px;
+    border-radius: 15px;
     box-shadow: 0 5px 20px rgba(0,0,0,.25);
 }
 
@@ -33,314 +38,274 @@ h1 {
     font-size: 25px;
 }
 
-.descripcion {
+p {
     font-size: 16px;
-    line-height: 1.5;
 }
 
-#video {
+video {
     width: 100%;
     max-width: 360px;
-    border-radius: 12px;
     margin-top: 15px;
-    background: #000;
+    border-radius: 12px;
+    background: black;
 }
 
-#canvas {
+canvas {
     display: none;
 }
 
-.estado {
+#resultado {
     margin-top: 15px;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 15px;
     background: #eeeeee;
+    border-radius: 8px;
     font-size: 15px;
+    word-break: break-all;
 }
 
-.boton {
-    display: block;
+button {
     width: 100%;
     padding: 13px;
     margin-top: 15px;
-    border: 0;
+    border: none;
     border-radius: 7px;
     background: #25a244;
     color: white;
     font-size: 17px;
     font-weight: bold;
 }
+
 </style>
+
 </head>
 
+
 <body>
+
 
 <div class="contenedor">
 
 <h1>📷 Escanear ficha</h1>
 
-<p class="descripcion">
+<p>
 Apunta la cámara al código QR de tu ficha.
 </p>
 
-<video id="video" autoplay playsinline></video>
+
+<video
+    id="video"
+    autoplay
+    playsinline>
+</video>
+
 
 <canvas id="canvas"></canvas>
 
-<div id="estado" class="estado">
-Iniciando cámara...
+
+<div id="resultado">
+
+📷 Apunta la cámara al código QR...
+
 </div>
 
-<button
-    id="reiniciar"
-    class="boton"
-    style="display:none;"
->
+
+<button onclick="location.reload()">
+
 🔄 INTENTAR NUEVAMENTE
+
 </button>
 
+
 </div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
+
 <script>
 
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const contexto = canvas.getContext("2d");
-const estado = document.getElementById("estado");
-const reiniciar = document.getElementById("reiniciar");
+const video =
+    document.getElementById("video");
 
-let stream = null;
-let escaneando = false;
+const canvas =
+    document.getElementById("canvas");
 
+const contexto =
+    canvas.getContext("2d");
 
-/* INICIAR CAMARA */
+const resultado =
+    document.getElementById("resultado");
 
-async function iniciarCamara() {
-
-    try {
-
-        estado.innerHTML =
-            "Solicitando acceso a la cámara...";
-
-        stream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video: {
-                    facingMode: {
-                        ideal: "environment"
-                    }
-                },
-
-                audio: false
-            });
-
-        video.srcObject = stream;
-
-        escaneando = true;
-
-        estado.innerHTML =
-            "📷 Apunta al código QR de tu ficha.";
-
-        analizarQR();
-
-    } catch (error) {
-
-        console.log(error);
-
-        estado.innerHTML =
-            "❌ No se pudo abrir la cámara.";
-
-        reiniciar.style.display = "block";
-    }
-}
+let escaneando = true;
 
 
-/* LEER QR */
+/* =========================
+   ABRIR CÁMARA
+   ========================= */
 
-function analizarQR() {
+navigator.mediaDevices.getUserMedia({
+
+    video: {
+
+        facingMode: {
+            ideal: "environment"
+        }
+
+    },
+
+    audio: false
+
+})
+
+.then(function(stream) {
+
+    video.srcObject = stream;
+
+    video.play();
+
+    resultado.innerHTML =
+        "📷 Cámara activa.<br>" +
+        "Apunta al código QR.";
+
+    leerQR();
+
+})
+
+.catch(function(error) {
+
+    console.log(error);
+
+    resultado.innerHTML =
+        "❌ No se pudo abrir la cámara.<br><br>" +
+        error.message;
+
+});
+
+
+/* =========================
+   LEER QR
+   ========================= */
+
+function leerQR() {
 
     if (!escaneando) {
         return;
     }
+
 
     if (
         video.readyState ===
         video.HAVE_ENOUGH_DATA
     ) {
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+
+        canvas.width =
+            video.videoWidth;
+
+        canvas.height =
+            video.videoHeight;
+
 
         contexto.drawImage(
+
             video,
+
             0,
+
             0,
+
             canvas.width,
+
             canvas.height
+
         );
+
 
         const imagen =
             contexto.getImageData(
+
                 0,
+
                 0,
+
                 canvas.width,
+
                 canvas.height
+
             );
 
-        const resultado =
+
+        const codigo =
             jsQR(
+
                 imagen.data,
+
                 imagen.width,
+
                 imagen.height
+
             );
 
-        if (resultado) {
 
-            const qr = resultado.data.trim();
-
-            console.log("QR:", qr);
+        if (codigo) {
 
             escaneando = false;
 
-            detenerCamara();
 
-            /*
-             * QR DE LA FICHA:
-             *
-             * jvc.net?userman=n74&password=vty
-             *
-             * Lo convertimos en:
-             *
-             * http://192.168.88.1/login?
-             * username=n74&password=vty
-             */
+            /* DETENER CÁMARA */
 
-            let texto = qr;
+            if (video.srcObject) {
 
-            if (
-                !texto.startsWith("http://") &&
-                !texto.startsWith("https://")
-            ) {
-                texto = "http://" + texto;
-            }
+                video.srcObject
+                    .getTracks()
+                    .forEach(
+                        function(track) {
 
-            try {
+                            track.stop();
 
-                const url = new URL(texto);
-
-                const usuario =
-                    url.searchParams.get("userman");
-
-                const password =
-                    url.searchParams.get("password");
-
-
-                if (
-                    usuario &&
-                    password
-                ) {
-
-                    const loginURL =
-                        "http://192.168.88.1/login?" +
-                        "username=" +
-                        encodeURIComponent(usuario) +
-                        "&password=" +
-                        encodeURIComponent(password);
-
-                    estado.innerHTML =
-                        "✅ Ficha encontrada.<br>" +
-                        "Conectando...";
-
-                    setTimeout(
-                        function() {
-
-                            window.location.href =
-                                loginURL;
-
-                        },
-                        700
+                        }
                     );
 
-                    return;
-                }
-
-
-                estado.innerHTML =
-                    "⚠️ El QR no contiene una ficha válida.";
-
-                reiniciar.style.display =
-                    "block";
-
-            } catch (error) {
-
-                console.log(error);
-
-                estado.innerHTML =
-                    "⚠️ No se pudo leer la ficha.";
-
-                reiniciar.style.display =
-                    "block";
             }
-        }
-    }
-
-    if (escaneando) {
-
-        requestAnimationFrame(
-            analizarQR
-        );
-    }
-}
 
 
-/* DETENER CAMARA */
+            /* MOSTRAR CONTENIDO REAL DEL QR */
 
-function detenerCamara() {
+            resultado.innerHTML =
 
-    escaneando = false;
+                "<b>✅ QR LEÍDO</b>" +
 
-    if (stream) {
+                "<br><br>" +
 
-        stream
-            .getTracks()
-            .forEach(
-                function(track) {
-                    track.stop();
-                }
+                "<b>Contenido del QR:</b>" +
+
+                "<br><br>" +
+
+                codigo.data;
+
+
+            console.log(
+                "CONTENIDO QR:",
+                codigo.data
             );
+
+
+            return;
+
+        }
+
     }
+
+
+    requestAnimationFrame(
+        leerQR
+    );
+
 }
-
-
-/* REINICIAR */
-
-reiniciar.onclick =
-    function() {
-
-        reiniciar.style.display =
-            "none";
-
-        estado.innerHTML =
-            "Iniciando cámara...";
-
-        iniciarCamara();
-    };
-
-
-/* INICIAR */
-
-window.addEventListener(
-    "load",
-    function() {
-
-        iniciarCamara();
-
-    }
-);
 
 </script>
 
+
 </body>
+
 </html>
